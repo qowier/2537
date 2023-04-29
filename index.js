@@ -4,9 +4,13 @@ const port = process.env.PORT || 3000;
 
 const app = express();
 
+app.get('/', (req,res) => {
+  res.send("<h1>Welcome to the site root!</h1>");
+});
+
 app.get('/about', (req,res) => {
   var color = req.query.color;
-  res.send("<h1 style='color:" + color + ";'>Hello!</h1>");
+  res.send("<h1 style='color:" + color + ";'>Welcome to the about page!!</h1>");
 });
 
 app.get('/gif/:id', (req,res) => {
@@ -40,4 +44,3 @@ app.get("*", (req,res) => {
 app.listen(port, () => {
 	console.log("Node application listening on port " + port);
 }); 
-  
