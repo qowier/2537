@@ -4,6 +4,8 @@ const port = process.env.PORT || 3000;
 
 const app = express();
 
+app.use(express.urlencoded({extended: false}));
+
 app.get('/', (req,res) => {
   res.send("<h1>Welcome to the site root!</h1>");
 });
@@ -31,6 +33,31 @@ app.get('/gif/:id', (req,res) => {
   }
   else {
     res.send("Invalid gif id: "+ gif);
+  }
+});
+
+app.get('/contact', (req,res) => {
+  var missingEmail = req.query.missing;
+  var html = `
+    email address:
+    <form action='/submitEmail' method='post'>
+        <input name='email' type='text' placeholder='email'>
+        <button>Submit</button>
+    </form>
+  `;
+  if (missingEmail) {
+    html += "<br> email is required";
+  }
+  res.send(html);
+});
+
+app.post('/submitEmail', (req,res) => {
+  var email = req.body.email;
+  if (!email) {
+    res.redirect('/contact?missing=1');
+  }
+  else {
+    res.send("Thanks for subscribing with your email: "+email);
   }
 });
 
