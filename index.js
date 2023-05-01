@@ -1,4 +1,7 @@
+require('dotenv').config();
 const express = require('express');
+const session = require('express-session');
+const MongoStore = require('connect-mongo');
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
 
@@ -6,9 +9,35 @@ const port = process.env.PORT || 3000;
 
 const app = express();
 
+const expireTime = 60 * 60 * 1000;
+
 var users = [];
 
+/* secret information section */
+const mongodb_user = process.env.MONGODB_USER;
+const mongodb_password = process.env.MONGODB_PASSWORD;
+const mongodb_session_secret = process.env.MONGODB_SESSION_SECRET;
+const node_session_secret = process.env.NODE_SESSION_SECRET;
+/* END secret section */
+
 app.use(express.urlencoded({extended: false}));
+
+var mongoStore = MongoStore.create({
+	// mongoUrl: `mongodb+srv://hli223:uceFW3O7kbcQdgxl@2537.hfr8du4.mongodb.net/test`
+
+  mongoUrl: `mongodb+srv://${mongodb_user}:${mongodb_password}@2537.hfr8du4.mongodb.net/test`,
+	crypto: {
+		secret: mongodb_session_secret
+	}
+})
+
+app.use(session({ 
+  secret: node_session_secret,
+	store: mongoStore, //default is memory store 
+	saveUninitialized: false, 
+	resave: true
+}
+));
 
 app.get('/', (req,res) => {
   res.send("<h1>Welcome to the site root!</h1>");
@@ -24,13 +53,13 @@ app.get('/gif/:id', (req,res) => {
   var gif = req.params.id;
 
   if (gif == 1) {
-    res.send("<img src='/rick_roll.gif' style='width:500px;'>");
+    res.send("<img src='/shake.gif' style='width:500px;'>");
   }
   else if (gif == 2) {
     res.send("<img src='/eat_popcorn.gif' style='width:500px;'>");
   }
-  else if (gif == 3) {
-    res.send("<img src='/shake.gif' style='width:500px;'>");
+  else if (gif > 2 && gif <= 9000) {
+    res.send("<img src='/rick_roll.gif' style='width:500px;'>");
   }
   else if (gif >= 9000){
     res.send("<img src='/over_9000.gif' style = 'width:500px;'>");
@@ -116,6 +145,9 @@ app.post('/loggingin', (req,res) => {
   for (i = 0; i < users.length; i++) {
     if (users[i].username == username) {
       if  (bcrypt.compareSync(password, users[i].password)) {
+        req.session.authenticated = true;
+        req.session.username = username;
+        req.session.cookie.maxAge = expireTime;
         res.redirect('/loggedIn');
         return;
       }
@@ -127,10 +159,21 @@ app.post('/loggingin', (req,res) => {
 });
 
 app.get('/loggedin', (req,res) => {
+  if (!req.session.authenticated) {
+    res.redirect('/login');
+  }
   var html = `
   You are logged in!
   `;
   res.send(html);
+});
+
+app.get('/logout', (req,res) => {
+	req.session.destroy();
+    var html = `
+    You are logged out.
+    `;
+    res.send(html);
 });
 
 app.use(express.static(__dirname + "/public"));
@@ -143,3 +186,5 @@ app.get("*", (req,res) => {
 app.listen(port, () => {
 	console.log("Node application listening on port " + port);
 }); 
+
+
