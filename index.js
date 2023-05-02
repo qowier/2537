@@ -14,8 +14,10 @@ const expireTime = 60 * 60 * 1000;
 var users = [];
 
 /* secret information section */
+const mongodb_host = process.env.MONGODB_HOST;
 const mongodb_user = process.env.MONGODB_USER;
 const mongodb_password = process.env.MONGODB_PASSWORD;
+const mongodb_database = process.env.MONGODB_DATABASE;
 const mongodb_session_secret = process.env.MONGODB_SESSION_SECRET;
 const node_session_secret = process.env.NODE_SESSION_SECRET;
 /* END secret section */
@@ -23,9 +25,7 @@ const node_session_secret = process.env.NODE_SESSION_SECRET;
 app.use(express.urlencoded({extended: false}));
 
 var mongoStore = MongoStore.create({
-	// mongoUrl: `mongodb+srv://hli223:uceFW3O7kbcQdgxl@2537.hfr8du4.mongodb.net/test`
-
-  mongoUrl: `mongodb+srv://${mongodb_user}:${mongodb_password}@2537.hfr8du4.mongodb.net/test`,
+  mongoUrl: `mongodb+srv://${mongodb_user}:${mongodb_password}@${mongodb_host}/${mongodb_database}`,
 	crypto: {
 		secret: mongodb_session_secret
 	}
