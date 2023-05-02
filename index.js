@@ -45,12 +45,119 @@ app.use(session({
 ));
 
 app.get('/', (req,res) => {
-  res.send("<h1>Welcome to the site root!</h1>");
+  if (!req.session.authenticated) {
+    const links = `
+      <a href="/signup"><button>Sign Up</button></a>
+      <a href="/login"><button>Log In</button></a>
+    `;
+    const html = `
+      <div>
+        <h1>Welcome to the Home site!</h1>
+        <p>Please sign up or log in</p>
+        <div>${links}</div>
+      </div>
+    `;
+    res.send(html);
+  }
+  else {
+    const links = `
+      <a href="/members"><button>Members Area</button></a>
+      <a href="/logout"><button>Log Out</button></a>
+    `;
+    const html = `
+      <div>
+        <h1>Hello, ${req.session.username}!</h1>
+        <p>Welcome to the Members area.</p>
+        <div>${links}</div>
+      </div>
+    `;
+    res.send(html);
+  }
 });
 
-app.get('/about', (req,res) => {
-  var color = req.query.color;
-  res.send("<h1 style='color:" + color + ";'>Welcome to the about page!!</h1>");
+
+// app.get('/about', (req,res) => {
+//   var color = req.query.color;
+//   res.send("<h1 style='color:" + color + ";'>Welcome to the about page!!</h1>");
+// });
+
+// app.get('/contact', (req,res) => {
+//   var missingEmail = req.query.missing;
+//   var html = `
+//     email address:
+//     <form action='/submitEmail' method='post'>
+//         <input name='email' type='text' placeholder='email'>
+//         <button>Submit</button>
+//     </form>
+//   `;
+//   if (missingEmail) {
+//     html += "<br> email is required";
+//   }
+//   res.send(html);
+// });
+
+// app.post('/submitEmail', (req,res) => {
+//   var email = req.body.email;
+//   if (!email) {
+//     res.redirect('/contact?missing=1');
+//   }
+//   else {
+//     res.send("Thanks for subscribing with your email: "+email);
+//   }
+// });
+
+/*
+TODO
+validate inputs
+*/
+app.get('/signup', (req, res) => {
+  var html = `
+    <h2>Signup:</h2>
+    <form action='/signupSubmit' method='POST'>
+      <input type='text' name='username' placeholder='Username'/>
+      <br>
+      <input type='email' name='email' placeholder='Email'/>
+      <br>
+      <input type='password' name='password' placeholder='Password'/>
+      <br>
+      <button>Submit</button>
+    </form>
+    <a href="/"><button>Return Home</button></a>
+    `;
+    res.send(html);
+});
+
+/*
+TODO
+Validate inputs
+*/
+app.get('/login', (req,res) => {
+  var html = `
+  <h2>Log In</h2>
+  <form action='/loggingin' method='post'>
+  <input type='email' name='email' placeholder='Email'/>
+  <br>
+  <input name='password' type='password' placeholder='password'>
+  <br>
+  <button>Submit</button>
+  </form>
+  `;
+  res.send(html);
+});
+
+app.get('/members', (req,res) => {
+  if (!req.session.authenticated) {
+    res.redirect('/');
+  }
+  username = req.session.username;
+  var html = `
+    <h2> Hello, ${username}! </h2>
+    <h2>Welcome to the Members Area!</h2>
+    <a href="/"><button>Return Home</button></a>
+    <br>
+    <a href="/logout"><button>Log Out</button></a>
+  `;
+  res.send(html);
 });
 
 app.get('/gif/:id', (req,res) => {
@@ -74,54 +181,6 @@ app.get('/gif/:id', (req,res) => {
   }
 });
 
-app.get('/contact', (req,res) => {
-  var missingEmail = req.query.missing;
-  var html = `
-    email address:
-    <form action='/submitEmail' method='post'>
-        <input name='email' type='text' placeholder='email'>
-        <button>Submit</button>
-    </form>
-  `;
-  if (missingEmail) {
-    html += "<br> email is required";
-  }
-  res.send(html);
-});
-
-app.post('/submitEmail', (req,res) => {
-  var email = req.body.email;
-  if (!email) {
-    res.redirect('/contact?missing=1');
-  }
-  else {
-    res.send("Thanks for subscribing with your email: "+email);
-  }
-});
-
-app.get('/createUser', (req,res) => {
-  var html = `
-  create user
-  <form action='/submitUser' method='post'>
-  <input name='username' type='text' placeholder='username'>
-  <input name='password' type='password' placeholder='password'>
-  <button>Submit</button>
-  </form>
-  `;
-  res.send(html);
-});
-
-app.get('/login', (req,res) => {
-  var html = `
-  log in
-  <form action='/loggingin' method='post'>
-  <input name='username' type='text' placeholder='username'>
-  <input name='password' type='password' placeholder='password'>
-  <button>Submit</button>
-  </form>
-  `;
-  res.send(html);
-});
 
 app.post('/submitUser', async (req,res) => {
   var username = req.body.username;
@@ -190,16 +249,14 @@ app.get('/loggedin', (req,res) => {
   }
   var html = `
   You are logged in!
+  <a href="/logout"><button>Log Out</button></a>
   `;
   res.send(html);
 });
 
 app.get('/logout', (req,res) => {
 	req.session.destroy();
-    var html = `
-    You are logged out.
-    `;
-    res.send(html);
+  res.redirect('/');
 });
 
 app.use(express.static(__dirname + "/public"));
