@@ -106,14 +106,10 @@ app.get('/', (req,res) => {
 //   }
 // });
 
-/*
-TODO
-validate inputs
-*/
 app.get('/signup', (req, res) => {
   var html = `
     <h2>Signup:</h2>
-    <form action='/signupSubmit' method='POST'>
+    <form action='/submitUser' method='POST'>
       <input type='text' name='username' placeholder='Username'/>
       <br>
       <input type='email' name='email' placeholder='Email'/>
@@ -125,6 +121,54 @@ app.get('/signup', (req, res) => {
     <a href="/"><button>Return Home</button></a>
     `;
     res.send(html);
+});
+
+app.post('/submitUser', async (req,res) => {
+  var username = req.body.username;
+  var email = req.body.email;
+  var password = req.body.password;
+
+  //Empty field check
+  if (!username || !email || !password) {
+    var errorMsg = "";
+    if (!username) {
+      errorMsg += "Username is required.<br>";
+    }
+    if (!email) {
+      errorMsg += "Email is required.<br>";
+    }
+    if (!password) {
+      errorMsg += "Password is required.<br>";
+    }
+    var html = `${errorMsg}<a href="/signup"><button>Try Again</button></a>`;
+    res.status(400).send(html);
+    return;
+  }
+
+  const schema = Joi.object(
+  {
+    username: Joi.string().alphanum().max(20).required(),
+    email: Joi.string().email().required(),
+    password: Joi.string().max(20).required()
+  });
+
+	const validationResult = schema.validate({username, email,password});
+	if (validationResult.error != null) {
+    console.log(validationResult.error);
+    var html = `
+    ${validationResult.error}
+    <br>
+    <a href="/signup"><button>Try Again</button></a>`;
+    res.status(400).send(html);
+    return;
+  }
+
+  var hashedPassword = await bcrypt.hash(password, saltRounds);
+
+	await userCollection.insertOne({username: username, password: hashedPassword});
+	console.log("Inserted user");
+
+  res.redirect("/members");
 });
 
 /*
@@ -141,6 +185,8 @@ app.get('/login', (req,res) => {
   <br>
   <button>Submit</button>
   </form>
+  <br>
+  <a href="/"><button>Return Home</button></a>
   `;
   res.send(html);
 });
@@ -149,10 +195,13 @@ app.get('/members', (req,res) => {
   if (!req.session.authenticated) {
     res.redirect('/');
   }
-  username = req.session.username;
+  var username = req.session.username;
+  const randomNum = Math.floor(Math.random() * 3) + 1;
   var html = `
     <h2> Hello, ${username}! </h2>
     <h2>Welcome to the Members Area!</h2>
+    <img src="/public/${randomNum}" alt="Random Image">
+    <br>
     <a href="/"><button>Return Home</button></a>
     <br>
     <a href="/logout"><button>Log Out</button></a>
@@ -160,7 +209,7 @@ app.get('/members', (req,res) => {
   res.send(html);
 });
 
-app.get('/gif/:id', (req,res) => {
+app.get('/public/:id', (req,res) => {
 
   var gif = req.params.id;
 
@@ -182,30 +231,6 @@ app.get('/gif/:id', (req,res) => {
 });
 
 
-app.post('/submitUser', async (req,res) => {
-  var username = req.body.username;
-  var password = req.body.password;
-  const schema = Joi.object(
-  {
-    username: Joi.string().alphanum().max(20).required(),
-    password: Joi.string().max(20).required()
-  });
-
-	const validationResult = schema.validate({username, password});
-	if (validationResult.error != null) {
-    console.log(validationResult.error);
-    res.redirect("/createUser");
-    return;
-  }
-
-  var hashedPassword = await bcrypt.hash(password, saltRounds);
-
-	await userCollection.insertOne({username: username, password: hashedPassword});
-	console.log("Inserted user");
-
-  var html = "successfully created user";
-  res.send(html);
-});
 
 app.post('/loggingin', async (req,res) => {
   var username = req.body.username;
@@ -243,17 +268,6 @@ app.post('/loggingin', async (req,res) => {
 
 });
 
-app.get('/loggedin', (req,res) => {
-  if (!req.session.authenticated) {
-    res.redirect('/login');
-  }
-  var html = `
-  You are logged in!
-  <a href="/logout"><button>Log Out</button></a>
-  `;
-  res.send(html);
-});
-
 app.get('/logout', (req,res) => {
 	req.session.destroy();
   res.redirect('/');
@@ -269,5 +283,3 @@ app.get("*", (req,res) => {
 app.listen(port, () => {
 	console.log("Node application listening on port " + port);
 }); 
-
-
