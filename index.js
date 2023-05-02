@@ -203,7 +203,7 @@ app.post('/loggingin', async (req,res) => {
 	else {
     console.log("incorrect password");
     var html = `Invalid email/password combination.<br>
-    <a href="/signup"><button>Try Again</button></a>`;
+    <a href="/login"><button>Try Again</button></a>`;
     res.status(400).send(html);
     return;
 	}
