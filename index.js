@@ -78,7 +78,7 @@ app.get('/', (req,res) => {
 app.get('/signup', (req, res) => {
   var html = `
     <h2>Signup:</h2>
-    <form action='/submitUser' method='POST'>
+    <form action='/submitSignup' method='POST'>
       <input type='text' name='username' placeholder='Username'/>
       <br>
       <input type='email' name='email' placeholder='Email'/>
@@ -92,7 +92,7 @@ app.get('/signup', (req, res) => {
     res.send(html);
 });
 
-app.post('/submitUser', async (req,res) => {
+app.post('/submitSignup', async (req,res) => {
   var username = req.body.username;
   var email = req.body.email;
   var password = req.body.password;
@@ -134,9 +134,11 @@ app.post('/submitUser', async (req,res) => {
 
   var hashedPassword = await bcrypt.hash(password, saltRounds);
 
-	await userCollection.insertOne({username: username, password: hashedPassword});
-	console.log("Inserted user");
-
+	await userCollection.insertOne({username: username, email: email, password: hashedPassword});
+  req.session.authenticated = true;
+  req.session.username = username;
+  req.session.email = email;
+  req.session.cookie.maxAge = expireTime;
   res.redirect("/members");
 });
 
@@ -201,7 +203,7 @@ app.get('/members', (req,res) => {
     res.redirect('/');
   }
   var username = req.session.username;
-  const randomNum = Math.floor(Math.random() * 3) + 1;
+  const randomNum = Math.floor(Math.random() * 10000) + 1;
   var html = `
     <h2> Hello, ${username}! </h2>
     <h2>Welcome to the Members Area!</h2>
@@ -218,13 +220,13 @@ app.get('/public/:id', (req,res) => {
 
   var gif = req.params.id;
 
-  if (gif == 1) {
+  if (gif >= 1 && gif < 3000) {
     res.send("<img src='/shake.gif' style='width:500px;'>");
   }
-  else if (gif == 2) {
+  else if (gif >= 3000 && gif <= 6000) {
     res.send("<img src='/eat_popcorn.gif' style='width:500px;'>");
   }
-  else if (gif > 2 && gif <= 9000) {
+  else if (gif > 6000 && gif <= 9000) {
     res.send("<img src='/rick_roll.gif' style='width:500px;'>");
   }
   else if (gif >= 9000){
