@@ -136,7 +136,7 @@ app.post('/submitSignup', async (req,res) => {
 
 	await userCollection.insertOne({username: username, email: email, password: hashedPassword});
   req.session.authenticated = true;
-  req.session.username = username;
+  req.session.username = result[0].username;
   req.session.email = email;
   req.session.cookie.maxAge = expireTime;
   res.redirect("/members");
@@ -146,11 +146,11 @@ app.get('/login', (req,res) => {
   var html = `
   <h2>Log In</h2>
   <form action='/loggingin' method='post'>
-  <input type='email' name='email' placeholder='Email'/>
-  <br>
-  <input name='password' type='password' placeholder='password'>
-  <br>
-  <button>Submit</button>
+    <input type='email' name='email' placeholder='Email'/>
+    <br>
+    <input name='password' type='password' placeholder='password'>
+    <br>
+    <button>Submit</button>
   </form>
   <br>
   <a href="/"><button>Return Home</button></a>
@@ -158,10 +158,6 @@ app.get('/login', (req,res) => {
   res.send(html);
 });
 
-/*
-TODO
-FIX VALIDATION
-*/
 app.post('/loggingin', async (req,res) => {
   var email = req.body.email;
   var password = req.body.password;
@@ -178,19 +174,33 @@ app.post('/loggingin', async (req,res) => {
     return;
 	}
 
-  const result = await userCollection.find({email: email}).project({email: 1, password: 1, _id: 1}).toArray();
+  const result = await userCollection.find({email: email}).project({username: 1, email: 1, password: 1, _id: 1}).toArray();
 
-  console.log(result);
-	if (await bcrypt.compare(password, result[0].password)) {
+  if (result.length != 1) {
+		console.log("user not found");
+    var html = `
+      <p>Invalid email/password combination.</p>
+      <form action = "/login">
+        <button>Try again</button>
+      </form>
+      <br>
+      <a href= "/"><button>Return Home</button></a>
+    `;
+    res.send(html);
+		return;
+	}
+
+  if (await bcrypt.compare(password, result[0].password)) {
     console.log("correct password");
     req.session.authenticated = true;
-    req.session.username = username;
+    req.session.username = result[0].username;
+    req.session.email = email;
     req.session.cookie.maxAge = expireTime;
-
     res.redirect('/members');
     return;
 	}
 	else {
+    console.log("incorrect password");
     var html = `Invalid email/password combination.<br>
     <a href="/signup"><button>Try Again</button></a>`;
     res.status(400).send(html);
@@ -230,27 +240,6 @@ app.get('/members', (req,res) => {
     <br>
     <a href="/logout"><button>Log Out</button></a>`;
   res.send(html);
-});
-
-app.get('/public/:id', (req,res) => {
-
-  var gif = req.params.id;
-
-  if (gif >= 1 && gif < 3000) {
-    res.send("<img src='/shake.gif' style='width:500px;'>");
-  }
-  else if (gif >= 3000 && gif <= 6000) {
-    res.send("<img src='/eat_popcorn.gif' style='width:500px;'>");
-  }
-  else if (gif > 6000 && gif <= 9000) {
-    res.send("<img src='/rick_roll.gif' style='width:500px;'>");
-  }
-  else if (gif >= 9000){
-    res.send("<img src='/over_9000.gif' style = 'width:500px;'>");
-  }
-  else {
-    res.send("Invalid gif id: "+ gif);
-  }
 });
 
 app.get('/logout', (req,res) => {
