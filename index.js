@@ -75,37 +75,6 @@ app.get('/', (req,res) => {
   }
 });
 
-
-// app.get('/about', (req,res) => {
-//   var color = req.query.color;
-//   res.send("<h1 style='color:" + color + ";'>Welcome to the about page!!</h1>");
-// });
-
-// app.get('/contact', (req,res) => {
-//   var missingEmail = req.query.missing;
-//   var html = `
-//     email address:
-//     <form action='/submitEmail' method='post'>
-//         <input name='email' type='text' placeholder='email'>
-//         <button>Submit</button>
-//     </form>
-//   `;
-//   if (missingEmail) {
-//     html += "<br> email is required";
-//   }
-//   res.send(html);
-// });
-
-// app.post('/submitEmail', (req,res) => {
-//   var email = req.body.email;
-//   if (!email) {
-//     res.redirect('/contact?missing=1');
-//   }
-//   else {
-//     res.send("Thanks for subscribing with your email: "+email);
-//   }
-// });
-
 app.get('/signup', (req, res) => {
   var html = `
     <h2>Signup:</h2>
@@ -171,10 +140,6 @@ app.post('/submitUser', async (req,res) => {
   res.redirect("/members");
 });
 
-/*
-TODO
-Validate inputs
-*/
 app.get('/login', (req,res) => {
   var html = `
   <h2>Log In</h2>
@@ -189,6 +154,46 @@ app.get('/login', (req,res) => {
   <a href="/"><button>Return Home</button></a>
   `;
   res.send(html);
+});
+
+/*
+TODO
+FIX VALIDATION
+*/
+app.post('/loggingin', async (req,res) => {
+  var email = req.body.email;
+  var password = req.body.password;
+
+  const schema = Joi.string().email().required();
+	const validationResult = schema.validate(email);
+	if (validationResult.error != null) {
+	  console.log(validationResult.error);
+    var html = `
+    ${validationResult.error}
+    <br>
+    <a href="/login"><button>Try Again</button></a>`;
+    res.status(400).send(html);
+    return;
+	}
+
+  const result = await userCollection.find({email: email}).project({email: 1, password: 1, _id: 1}).toArray();
+
+  console.log(result);
+	if (await bcrypt.compare(password, result[0].password)) {
+    console.log("correct password");
+    req.session.authenticated = true;
+    req.session.username = username;
+    req.session.cookie.maxAge = expireTime;
+
+    res.redirect('/members');
+    return;
+	}
+	else {
+    var html = `Invalid email/password combination.<br>
+    <a href="/signup"><button>Try Again</button></a>`;
+    res.status(400).send(html);
+    return;
+	}
 });
 
 app.get('/members', (req,res) => {
@@ -230,47 +235,14 @@ app.get('/public/:id', (req,res) => {
   }
 });
 
-
-
-app.post('/loggingin', async (req,res) => {
-  var username = req.body.username;
-  var password = req.body.password;
-
-  const schema = Joi.string().max(20).required();
-	const validationResult = schema.validate(username);
-	if (validationResult.error != null) {
-	   console.log(validationResult.error);
-	   res.redirect("/login");
-	   return;
-	}
-  const result = await userCollection.find({username: username}).project({username: 1, password: 1, _id: 1}).toArray();
-
-  console.log(result);
-	if (result.length != 1) {
-  console.log("user not found");
-  res.redirect("/login");
-  return;
-	}
-	if (await bcrypt.compare(password, result[0].password)) {
-  console.log("correct password");
-  req.session.authenticated = true;
-  req.session.username = username;
-  req.session.cookie.maxAge = expireTime;
-
-  res.redirect('/loggedIn');
-  return;
-	}
-	else {
-  console.log("incorrect password");
-  res.redirect("/login");
-  return;
-	}
-
-});
-
 app.get('/logout', (req,res) => {
 	req.session.destroy();
   res.redirect('/');
+});
+
+app.get('/about', (req,res) => {
+  var color = req.query.color;
+  res.send("<h1 style='color:" + color + ";'>Welcome to the about page!!</h1>");
 });
 
 app.use(express.static(__dirname + "/public"));
