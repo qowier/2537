@@ -112,35 +112,35 @@ app.post('/submitSignup', async (req,res) => {
     var html = `${errorMsg}<a href="/signup"><button>Try Again</button></a>`;
     res.status(400).send(html);
     return;
+  } else {
+    const schema = Joi.object(
+      {
+        username: Joi.string().alphanum().max(20).required(),
+        email: Joi.string().email().required(),
+        password: Joi.string().max(20).required()
+      });
+    
+      const validationResult = schema.validate({username, email,password});
+      if (validationResult.error != null) {
+        console.log(validationResult.error);
+        var html = `
+        ${validationResult.error}
+        <br>
+        <a href="/signup"><button>Try Again</button></a>`;
+        res.status(400).send(html);
+        return;
+      }
+    
+      var hashedPassword = await bcrypt.hash(password, saltRounds);
+      const result = await userCollection.find({email: email}).project({username: 1, email: 1, password: 1, _id: 1}).toArray();
+    
+      await userCollection.insertOne({username: username, email: email, password: hashedPassword});
+      req.session.authenticated = true;
+      req.session.username = result[0].username;
+      req.session.email = email;
+      req.session.cookie.maxAge = expireTime;
+      res.redirect("/members");
   }
-
-  const schema = Joi.object(
-  {
-    username: Joi.string().alphanum().max(20).required(),
-    email: Joi.string().email().required(),
-    password: Joi.string().max(20).required()
-  });
-
-	const validationResult = schema.validate({username, email,password});
-	if (validationResult.error != null) {
-    console.log(validationResult.error);
-    var html = `
-    ${validationResult.error}
-    <br>
-    <a href="/signup"><button>Try Again</button></a>`;
-    res.status(400).send(html);
-    return;
-  }
-
-  var hashedPassword = await bcrypt.hash(password, saltRounds);
-  const result = await userCollection.find({email: email}).project({username: 1, email: 1, password: 1, _id: 1}).toArray();
-
-	await userCollection.insertOne({username: username, email: email, password: hashedPassword});
-  req.session.authenticated = true;
-  req.session.username = result[0].username;
-  req.session.email = email;
-  req.session.cookie.maxAge = expireTime;
-  res.redirect("/members");
 });
 
 app.get('/login', (req,res) => {
