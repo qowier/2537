@@ -14,9 +14,6 @@ const Joi = require("joi");
 //expire after 1 hour
 const expireTime = 60 * 60 * 1000;
 
-
-var users = [];
-
 /* secret information section */
 const mongodb_host = process.env.MONGODB_HOST;
 const mongodb_user = process.env.MONGODB_USER;
