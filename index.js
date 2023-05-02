@@ -1,3 +1,4 @@
+require("./utils.js");
 require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
@@ -8,8 +9,11 @@ const saltRounds = 10;
 const port = process.env.PORT || 3000;
 
 const app = express();
+const Joi = require("joi");
 
+//expire after 1 hour
 const expireTime = 60 * 60 * 1000;
+
 
 var users = [];
 
@@ -22,10 +26,14 @@ const mongodb_session_secret = process.env.MONGODB_SESSION_SECRET;
 const node_session_secret = process.env.NODE_SESSION_SECRET;
 /* END secret section */
 
+var {database} = include('databaseConnection');
+
+const userCollection = database.db(mongodb_database).collection('users');
+
 app.use(express.urlencoded({extended: false}));
 
 var mongoStore = MongoStore.create({
-  mongoUrl: `mongodb+srv://${mongodb_user}:${mongodb_password}@${mongodb_host}/${mongodb_database}`,
+  mongoUrl: `mongodb+srv://${mongodb_user}:${mongodb_password}@${mongodb_host}/sessions`,
 	crypto: {
 		secret: mongodb_session_secret
 	}
@@ -118,44 +126,65 @@ app.get('/login', (req,res) => {
   res.send(html);
 });
 
-app.post('/submitUser', (req,res) => {
+app.post('/submitUser', async (req,res) => {
   var username = req.body.username;
   var password = req.body.password;
-  var hashedPassword = bcrypt.hashSync(password, saltRounds);
+  const schema = Joi.object(
+  {
+    username: Joi.string().alphanum().max(20).required(),
+    password: Joi.string().max(20).required()
+  });
 
-
-  users.push({ username: username, password: hashedPassword });
-
-  console.log(users);
-
-  var usershtml = "";
-  for (i = 0; i < users.length; i++) {
-    usershtml += "<li>" + users[i].username + ": " + users[i].password + "</li>";
+	const validationResult = schema.validate({username, password});
+	if (validationResult.error != null) {
+    console.log(validationResult.error);
+    res.redirect("/createUser");
+    return;
   }
 
-  var html = "<ul>" + usershtml + "</ul>";
+  var hashedPassword = await bcrypt.hash(password, saltRounds);
+
+	await userCollection.insertOne({username: username, password: hashedPassword});
+	console.log("Inserted user");
+
+  var html = "successfully created user";
   res.send(html);
 });
 
-app.post('/loggingin', (req,res) => {
+app.post('/loggingin', async (req,res) => {
   var username = req.body.username;
   var password = req.body.password;
 
-  var usershtml = "";
-  for (i = 0; i < users.length; i++) {
-    if (users[i].username == username) {
-      if  (bcrypt.compareSync(password, users[i].password)) {
-        req.session.authenticated = true;
-        req.session.username = username;
-        req.session.cookie.maxAge = expireTime;
-        res.redirect('/loggedIn');
-        return;
-      }
-    }
-  }
+  const schema = Joi.string().max(20).required();
+	const validationResult = schema.validate(username);
+	if (validationResult.error != null) {
+	   console.log(validationResult.error);
+	   res.redirect("/login");
+	   return;
+	}
+  const result = await userCollection.find({username: username}).project({username: 1, password: 1, _id: 1}).toArray();
 
-  //user and password combination not found
+  console.log(result);
+	if (result.length != 1) {
+  console.log("user not found");
   res.redirect("/login");
+  return;
+	}
+	if (await bcrypt.compare(password, result[0].password)) {
+  console.log("correct password");
+  req.session.authenticated = true;
+  req.session.username = username;
+  req.session.cookie.maxAge = expireTime;
+
+  res.redirect('/loggedIn');
+  return;
+	}
+	else {
+  console.log("incorrect password");
+  res.redirect("/login");
+  return;
+	}
+
 });
 
 app.get('/loggedin', (req,res) => {
