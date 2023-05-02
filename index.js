@@ -202,17 +202,33 @@ app.get('/members', (req,res) => {
   if (!req.session.authenticated) {
     res.redirect('/');
   }
+
   var username = req.session.username;
+  var gif;
   const randomNum = Math.floor(Math.random() * 10000) + 1;
+
+  if (randomNum >= 1 && randomNum < 3000) {
+    gif = "<img src='/shake.gif' style='width:500px;'>";
+  }
+  else if (randomNum >= 3000 && randomNum < 6000) {
+    gif ="<img src='/eat_popcorn.gif' style='width:500px;'>";
+  }
+  else if (randomNum >= 6000 && randomNum <= 9000) {
+    gif = "<img src='/rick_roll.gif' style='width:500px;'>";
+  }
+  else if (randomNum > 9000) {
+    gif ="<img src='/over_9000.gif' style = 'width:500px;'>";
+  }
+
   var html = `
     <h2> Hello, ${username}! </h2>
     <h2>Welcome to the Members Area!</h2>
-    <img src="/public/${randomNum}" alt="Random Image">
+    <br>
+    ${gif}
     <br>
     <a href="/"><button>Return Home</button></a>
     <br>
-    <a href="/logout"><button>Log Out</button></a>
-  `;
+    <a href="/logout"><button>Log Out</button></a>`;
   res.send(html);
 });
 
